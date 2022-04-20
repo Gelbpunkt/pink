@@ -1,0 +1,48 @@
+[package]
+name = "pink"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+futures-util = { version = "0.3", default-features = false }
+mlua = { git = "https://github.com/khvzak/mlua", branch = "master", default-features = false, features = [
+    "async",
+    "luau",
+    "vendored"
+] }
+parking_lot = { version = "0.12", features = [
+    "hardware-lock-elision",
+    "nightly"
+] }
+serde = { version = "1", features = ["derive"] }
+simd-json = { version = "0.4", default-features = false }
+tokio = { version = "1", default-features = false, features = [
+    "rt-multi-thread",
+    "parking_lot"
+] }
+tracing = { version = "0.1", default-features = false }
+tracing-subscriber = { version = "0.3", default-features = false, features = [
+    "fmt",
+    "parking_lot",
+    "std"
+] }
+twilight-model = { git = "https://github.com/twilight-rs/twilight", branch = "next", default-features = false }
+twilight-http = { git = "https://github.com/twilight-rs/twilight", branch = "next", default-features = false, features = [
+    "rustls-webpki-roots",
+    "simd-json"
+] }
+twilight-gateway = { git = "https://github.com/twilight-rs/twilight", branch = "next", default-features = false, features = [
+    "rustls-webpki-roots",
+    "simd-json",
+    "zlib-simd"
+] }
+
+[profile.release]
+codegen-units = 1
+debug = false
+incremental = false
+lto = true
+opt-level = 3
+panic = "abort"
+debug-assertions = false
