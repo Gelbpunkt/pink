@@ -5,23 +5,15 @@ use tracing_subscriber::{filter::LevelFilter, layer::SubscriberExt, util::Subscr
 use twilight_gateway::{cluster::ShardScheme, Event, EventTypeFlags, Intents};
 use twilight_model::channel::Message;
 
-use std::{env, error::Error, fs::read_to_string, str::FromStr, sync::Arc};
+use std::{
+    env,
+    error::Error,
+    fs::{self, read_to_string},
+    str::FromStr,
+    sync::Arc,
+};
 
-const LUA_MESSAGE_HANDLER: &str = r#"
-string.startswith = function(self, str)
-    return self:find('^' .. str) ~= nil
-end
-
-function on_message(message)
-    if message.content:startswith("!hello") then
-        print("Lua got a message with this content:")
-        print(message.content)
-        print("Replying now!")
-        message:reply("Hello?")
-        print("Done replying!")
-    end
-end
-"#;
+mod builtins;
 
 #[derive(Clone)]
 struct LuaOnMessageEvent(Message, Arc<twilight_http::Client>);
@@ -77,7 +69,8 @@ async fn run() -> Result<(), Box<dyn Error + Send + Sync>> {
 
     let globals = lua.globals();
 
-    // TODO: Add logging global methods (log.info, etc.)
+    // Load builtins
+    builtins::load(&lua)?;
 
     let compiler = Compiler::new()
         .set_optimization_level(2)
@@ -90,11 +83,24 @@ async fn run() -> Result<(), Box<dyn Error + Send + Sync>> {
 
     tracing::info!("Loading Lua code");
 
-    let on_message_bytecode = compiler.compile(LUA_MESSAGE_HANDLER);
+    for entry in fs::read_dir("lib")? {
+        let entry = entry?;
+        let path = entry.path();
 
-    lua.load(&on_message_bytecode)
-        .set_mode(ChunkMode::Binary)
-        .eval()?;
+        if path.is_file() {
+            let file_name = path.file_name().unwrap().to_str().unwrap();
+
+            tracing::info!("Loading {file_name}");
+
+            let contents = tokio::fs::read_to_string(&path).await?;
+            let bytecode = compiler.compile(contents);
+
+            lua.load(&bytecode)
+                .set_name(file_name)?
+                .set_mode(ChunkMode::Binary)
+                .eval()?;
+        }
+    }
 
     let on_message = globals.get::<_, Function>("on_message")?;
 
