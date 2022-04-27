@@ -3,7 +3,7 @@ use mlua::{ChunkMode, Compiler, ExternalResult, Function, Lua, UserData};
 use serde::Deserialize;
 use tracing_subscriber::{filter::LevelFilter, layer::SubscriberExt, util::SubscriberInitExt};
 use twilight_gateway::{cluster::ShardScheme, Event, EventTypeFlags, Intents};
-use twilight_model::channel::Message;
+use twilight_model::{channel::Message, gateway::payload::incoming::MessageDelete};
 
 use std::{
     env,
@@ -21,6 +21,30 @@ struct LuaOnMessageEvent(Message, Arc<twilight_http::Client>);
 impl UserData for LuaOnMessageEvent {
     fn add_fields<'lua, F: mlua::UserDataFields<'lua, Self>>(fields: &mut F) {
         fields.add_field_method_get("content", |_, this| Ok(this.0.content.clone()))
+    }
+
+    fn add_methods<'lua, M: mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
+        methods.add_async_method("reply", |_, this, content: String| async move {
+            this.1
+                .create_message(this.0.channel_id)
+                .content(&content)
+                .to_lua_err()?
+                .exec()
+                .await
+                .to_lua_err()?;
+
+            Ok(())
+        });
+    }
+}
+
+#[derive(Clone)]
+struct LuaOnMessageDeleteEvent(MessageDelete, Arc<twilight_http::Client>);
+
+impl UserData for LuaOnMessageDeleteEvent {
+    fn add_fields<'lua, F: mlua::UserDataFields<'lua, Self>>(fields: &mut F) {
+        fields.add_field_method_get("message_id", |_, this| Ok(this.0.id.get()));
+        fields.add_field_method_get("channel_id", |_, this| Ok(this.0.channel_id.get()))
     }
 
     fn add_methods<'lua, M: mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
@@ -103,6 +127,7 @@ async fn run() -> Result<(), Box<dyn Error + Send + Sync>> {
     }
 
     let on_message = globals.get::<_, Function>("on_message")?;
+    let on_message_delete = globals.get::<_, Function>("on_message_delete")?;
 
     tracing::info!("Connecting to Discord");
 
@@ -116,7 +141,9 @@ async fn run() -> Result<(), Box<dyn Error + Send + Sync>> {
             | Intents::DIRECT_MESSAGES,
     )
     .shard_scheme(ShardScheme::Auto)
-    .event_types(EventTypeFlags::MESSAGE_CREATE | EventTypeFlags::READY)
+    .event_types(
+        EventTypeFlags::MESSAGE_CREATE | EventTypeFlags::MESSAGE_DELETE | EventTypeFlags::READY,
+    )
     .http_client(http.clone())
     .build()
     .await?;
@@ -130,6 +157,10 @@ async fn run() -> Result<(), Box<dyn Error + Send + Sync>> {
             Event::MessageCreate(evt) => {
                 let lua_msg = LuaOnMessageEvent(evt.0, http.clone());
                 on_message.call_async::<_, ()>(lua_msg).await?;
+            }
+            Event::MessageDelete(evt) => {
+                let lua_msg = LuaOnMessageDeleteEvent(evt, http.clone());
+                on_message_delete.call_async::<_, ()>(lua_msg).await?;
             }
             Event::Ready(_) => {
                 tracing::info!("Bot is ready");
