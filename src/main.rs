@@ -80,6 +80,7 @@ async fn run() -> Result<(), Box<dyn Error + Send + Sync>> {
 
     let on_message = globals.get::<_, Function>("on_message")?;
     let on_message_delete = globals.get::<_, Function>("on_message_delete")?;
+    let on_message_update = globals.get::<_, Function>("on_message_update")?;
 
     tracing::info!("Connecting to Discord");
 
@@ -94,7 +95,7 @@ async fn run() -> Result<(), Box<dyn Error + Send + Sync>> {
     )
     .shard_scheme(ShardScheme::Auto)
     .event_types(
-        EventTypeFlags::MESSAGE_CREATE | EventTypeFlags::MESSAGE_DELETE | EventTypeFlags::READY,
+        EventTypeFlags::MESSAGE_CREATE | EventTypeFlags::MESSAGE_DELETE | EventTypeFlags::MESSAGE_UPDATE | EventTypeFlags::READY,
     )
     .http_client(http.clone())
     .build()
@@ -113,6 +114,10 @@ async fn run() -> Result<(), Box<dyn Error + Send + Sync>> {
             Event::MessageDelete(evt) => {
                 let lua_msg = userdata::LuaOnMessageDeleteEvent(evt, http.clone());
                 on_message_delete.call_async::<_, ()>(lua_msg).await?;
+            }
+            Event::MessageUpdate(evt) => {
+                let lua_msg = userdata::LuaOnMessageUpdateEvent(*evt, http.clone());
+                on_message_update.call_async::<_, ()>(lua_msg).await?;
             }
             Event::Ready(_) => {
                 tracing::info!("Bot is ready");
