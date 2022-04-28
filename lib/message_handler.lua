@@ -11,7 +11,7 @@ end
 function on_message_delete(message)
 	log.info("Message deleted with id:")
 	log.info(message.message_id)
-	event:reply("Hey! I saw that!")
+	message:reply("Hey! I saw that!")
 end
 
 function on_message_update(message)
