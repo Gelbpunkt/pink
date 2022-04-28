@@ -8,13 +8,13 @@ function on_message(message)
     end
 end
 
-function on_message_delete(event)
+function on_message_delete(message)
 	log.info("Message deleted with id:")
-	log.info(event.message_id)
+	log.info(message.message_id)
 	event:reply("Hey! I saw that!")
 end
 
-function on_message_update(event)
+function on_message_update(message)
     log.info("Message was edited with content:")
     log.info(message.content)
     message:reply("What you tryna hide?")

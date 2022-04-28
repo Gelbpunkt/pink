@@ -34,7 +34,7 @@ pub struct LuaOnMessageDeleteEvent(pub MessageDelete, pub Arc<twilight_http::Cli
 
 impl UserData for LuaOnMessageDeleteEvent {
     fn add_fields<'lua, F: mlua::UserDataFields<'lua, Self>>(fields: &mut F) {
-        fields.add_field_method_get("message_id", |_, this| Ok(this.0.id.get()));
+        fields.add_field_method_get("id", |_, this| Ok(this.0.id.get()));
         fields.add_field_method_get("channel_id", |_, this| Ok(this.0.channel_id.get()))
     }
 
