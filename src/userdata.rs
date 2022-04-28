@@ -1,5 +1,8 @@
-use mlua::{UserData, ExternalResult};
-use twilight_model::{channel::Message, gateway::payload::incoming::{MessageDelete, MessageUpdate}};
+use mlua::{ExternalResult, UserData};
+use twilight_model::{
+    channel::Message,
+    gateway::payload::incoming::{MessageDelete, MessageUpdate},
+};
 
 use std::sync::Arc;
 
@@ -55,6 +58,7 @@ pub struct LuaOnMessageUpdateEvent(pub MessageUpdate, pub Arc<twilight_http::Cli
 
 impl UserData for LuaOnMessageUpdateEvent {
     fn add_fields<'lua, F: mlua::UserDataFields<'lua, Self>>(fields: &mut F) {
+        fields.add_field_method_get("author", |_, this| Ok(this.0.content.clone()));
         fields.add_field_method_get("content", |_, this| Ok(this.0.content.clone()));
     }
 

@@ -14,8 +14,8 @@ function on_message_delete(event)
 	event:reply("Hey! I saw that!")
 end
 
-function on_message_update(message)
-        log.info("Message was edited with content:")
-        log.info(message.content)
-        message:reply("What you tryna hide?")
+function on_message_update(event)
+    log.info("Message was edited with content:")
+    log.info(message.content)
+    message:reply("What you tryna hide?")
 end
