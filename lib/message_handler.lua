@@ -11,6 +11,5 @@ end
 function on_message_delete(event)
 	log.info("Message deleted with id:")
 	log.info(event.message_id)
-
 	event:reply("Hey! I saw that!")
 end
